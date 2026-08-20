@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: messenger
+      POSTGRES_PASSWORD: messenger
+      POSTGRES_DB: messenger
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U messenger -d messenger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "8443:8443"
+    environment:
+      DB_DSN: postgres://messenger:messenger@db:5432/messenger?sslmode=disable
+      # Ключ шифрования сообщений. Если пусто — генерируется один раз в
+      # certs/master.key (volume certs) и переживает перезапуски.
+      MASTER_KEY: ${MASTER_KEY:-}
+      TLS_CERT: /app/certs/server.crt
+      TLS_KEY: /app/certs/server.key
+    volumes:
+      - certs:/app/certs
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  certs:

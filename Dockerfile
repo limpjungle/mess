@@ -1,14 +1,15 @@
-FROM golang:1.26.6-alpine3.24 AS builder
-WORKDIR /app
+FROM golang:1.26-alpine AS build
+WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
-FROM alpine:3.24
-RUN apk add --no-cache openssl bash
-WORKDIR /root/
-COPY --from=builder /app/main .
-COPY --from=builder /app/scripts/gen-certs.sh ./scripts/gen-certs.sh
-RUN chmod +x ./scripts/gen-certs.sh
+RUN CGO_ENABLED=0 go build -trimpath -o /out/server ./cmd/server
+
+FROM alpine:3.21
+RUN apk add --no-cache openssl
+WORKDIR /app
+COPY --from=build /out/server /app/server
+COPY scripts/docker-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 EXPOSE 8443
-CMD [ "bin/sh", "c", "./scripts/gen-certs.sh && ./main" ]
+ENTRYPOINT ["/app/entrypoint.sh"]
