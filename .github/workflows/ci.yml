@@ -1,0 +1,10 @@
+name CI
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  lint-and-test:
+  build-docker:
+  
